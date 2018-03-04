@@ -4,6 +4,7 @@ macro_rules! struct_events {
         else: { $( $e_alias:ident : $e_sdl:pat ),* }
     )
     => {
+        /// window: { $( $win_alias:ident : $win_sdl:pat, $win_ty:ty, $win_fn:block, ),* },
         use sdl2::EventPump;
 
 
@@ -44,19 +45,15 @@ macro_rules! struct_events {
                 }
             }
 
-            pub fn pump(&mut self, renderer: &mut ::sdl2::render::Renderer) {
+            pub fn pump(&mut self, renderer: &mut ::sdl2::render::Canvas<::sdl2::video::Window>) {
                 self.now = ImmediateEvents::new();
 
                 for event in self.pump.poll_iter() {
                     use sdl2::event::Event::*;
-                    use sdl2::event::WindowEventId::Resized;
+                    use sdl2::event::WindowEvent;
                     use sdl2::keyboard::Keycode::*;
 
                     match event {
-                        Window { win_event_id: Resized, .. } => {
-                            self.now.resize = Some(renderer.output_size().unwrap());
-                        },
-
                         KeyDown { keycode, .. } => match keycode {
                             // $( ... ),* containing $k_sdl and $k_alias means:
                             //   "for every element ($k_alias : $k_sdl) pair,
@@ -64,10 +61,10 @@ macro_rules! struct_events {
                             //    it is, then set the $k_alias fields to true."
                             $(
                                 Some($k_sdl) => {
-                                    // Prevent multiple presses when keeping a key down
-                                    // Was previously not pressed?
+                                // Prevent multiple presses when keeping a key down
+                                // Was previously not pressed?
                                     if !self.$k_alias {
-                                        // Key pressed
+                                    // Key pressed
                                         self.now.$k_alias = Some(true);
                                     }
 
@@ -85,6 +82,13 @@ macro_rules! struct_events {
                                     self.$k_alias = false;
                                 }
                             ),*
+                            _ => {}
+                        },
+
+                        Window { win_event, .. } => match win_event {
+                            Resized => {
+                                self.now.resize = Some(renderer.output_size().unwrap());
+                            },
                             _ => {}
                         },
 

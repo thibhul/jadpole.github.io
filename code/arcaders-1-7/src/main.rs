@@ -1,12 +1,11 @@
 extern crate sdl2;
-extern crate sdl2_image;
 
 mod phi;
 mod views;
 
 
 fn main() {
-    ::phi::spawn("ArcadeRS Shooter", |phi| {
-        Box::new(::views::ShipView::new(phi))
-    });
+    /// Interesting case of lifetimes
+    ::phi::spawn("ArcadeRS Shooter",
+                 |mut phi: &mut ::phi::Phi| Box::new(::views::ShipView::new(&mut phi)));
 }

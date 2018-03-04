@@ -1,7 +1,8 @@
 #[macro_use]
 mod events;
 
-use sdl2::render::Renderer;
+use sdl2::render::Canvas;
+use sdl2::video::Window;
 
 
 // Generate an `Events` structure to record SDL events.
@@ -19,9 +20,9 @@ struct_events! {
 
 /// Bundles the Phi abstractions in a single structure which  can be passed
 /// easily between functions.
-pub struct Phi<'window> {
+pub struct Phi {
     pub events: Events,
-    pub renderer: Renderer<'window>,
+    pub renderer: Canvas<Window>,
 }
 
 

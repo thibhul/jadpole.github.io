@@ -2,6 +2,8 @@ use phi::{Phi, View, ViewAction};
 use phi::data::Rectangle;
 use phi::gfx::{CopySprite, Sprite};
 use sdl2::pixels::Color;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 
 /// Pixels traveled by the player's ship every second, when it is moving.
@@ -15,42 +17,52 @@ const SHIP_H: f64 = 39.0;
 /// from left to right, then from top to bottom.
 #[derive(Clone, Copy)]
 enum ShipFrame {
-    UpNorm   = 0,
-    UpFast   = 1,
-    UpSlow   = 2,
-    MidNorm  = 3,
-    MidFast  = 4,
-    MidSlow  = 5,
+    UpNorm = 0,
+    UpFast = 1,
+    UpSlow = 2,
+    MidNorm = 3,
+    MidFast = 4,
+    MidSlow = 5,
     DownNorm = 6,
     DownFast = 7,
-    DownSlow = 8
+    DownSlow = 8,
 }
 
 
-struct Ship {
+struct Ship<'view> {
     rect: Rectangle,
-    sprites: Vec<Sprite>,
+    sprites: Vec<Sprite<'view>>,
     current: ShipFrame,
 }
 
 
-pub struct ShipView {
-    player: Ship,
+pub struct ShipView<'view> {
+    player: Ship<'view>,
 }
 
-impl ShipView {
-    pub fn new(phi: &mut Phi) -> ShipView {
-        let spritesheet = Sprite::load(&mut phi.renderer, "assets/spaceship.png").unwrap();
+impl<'view> ShipView<'view> {
+    pub fn new(phi: &'view mut Phi) -> ShipView<'view> {
+        // let spritesheet = Sprite::load(&phi.renderer, "assets/spaceship.png").unwrap();
+        let spritesheet;
+        match Sprite::load(&mut phi.renderer, "assets/spaceship.png") {
+            Some(val) => {
+                spritesheet = val;
+            }
+            None => {
+                panic!("Could not load sprite of spaceship");
+            }
+        }
         let mut sprites = Vec::with_capacity(9);
 
         for y in 0..3 {
             for x in 0..3 {
                 sprites.push(spritesheet.region(Rectangle {
-                    w: SHIP_W,
-                    h: SHIP_H,
-                    x: SHIP_W * x as f64,
-                    y: SHIP_H * y as f64,
-                }).unwrap());
+                        w: SHIP_W,
+                        h: SHIP_H,
+                        x: SHIP_W * x as f64,
+                        y: SHIP_H * y as f64,
+                    })
+                    .unwrap());
             }
         }
 
@@ -64,12 +76,12 @@ impl ShipView {
                 },
                 sprites: sprites,
                 current: ShipFrame::MidNorm,
-            }
+            },
         }
     }
 }
 
-impl View for ShipView {
+impl<'view> View<'view> for ShipView<'view> {
     fn render(&mut self, phi: &mut Phi, elapsed: f64) -> ViewAction {
         if phi.events.now.quit || phi.events.now.key_escape == Some(true) {
             return ViewAction::Quit;
@@ -78,13 +90,14 @@ impl View for ShipView {
 
         // Move the player's ship
 
-        let diagonal =
-            (phi.events.key_up ^ phi.events.key_down) &&
-            (phi.events.key_left ^ phi.events.key_right);
+        let diagonal = (phi.events.key_up ^ phi.events.key_down) &&
+                       (phi.events.key_left ^ phi.events.key_right);
 
-        let moved =
-            if diagonal { 1.0 / 2.0f64.sqrt() }
-            else { 1.0 } * PLAYER_SPEED * elapsed;
+        let moved = if diagonal {
+            1.0 / 2.0f64.sqrt()
+        } else {
+            1.0
+        } * PLAYER_SPEED * elapsed;
 
         let dx = match (phi.events.key_left, phi.events.key_right) {
             (true, true) | (false, false) => 0.0,
@@ -119,17 +132,27 @@ impl View for ShipView {
 
 
         // Select the appropriate sprite of the ship to show.
-        self.player.current =
-            if dx == 0.0 && dy < 0.0       { ShipFrame::UpNorm }
-            else if dx > 0.0 && dy < 0.0   { ShipFrame::UpFast }
-            else if dx < 0.0 && dy < 0.0   { ShipFrame::UpSlow }
-            else if dx == 0.0 && dy == 0.0 { ShipFrame::MidNorm }
-            else if dx > 0.0 && dy == 0.0  { ShipFrame::MidFast }
-            else if dx < 0.0 && dy == 0.0  { ShipFrame::MidSlow }
-            else if dx == 0.0 && dy > 0.0  { ShipFrame::DownNorm }
-            else if dx > 0.0 && dy > 0.0   { ShipFrame::DownFast }
-            else if dx < 0.0 && dy > 0.0   { ShipFrame::DownSlow }
-            else { unreachable!() };
+        self.player.current = if dx == 0.0 && dy < 0.0 {
+            ShipFrame::UpNorm
+        } else if dx > 0.0 && dy < 0.0 {
+            ShipFrame::UpFast
+        } else if dx < 0.0 && dy < 0.0 {
+            ShipFrame::UpSlow
+        } else if dx == 0.0 && dy == 0.0 {
+            ShipFrame::MidNorm
+        } else if dx > 0.0 && dy == 0.0 {
+            ShipFrame::MidFast
+        } else if dx < 0.0 && dy == 0.0 {
+            ShipFrame::MidSlow
+        } else if dx == 0.0 && dy > 0.0 {
+            ShipFrame::DownNorm
+        } else if dx > 0.0 && dy > 0.0 {
+            ShipFrame::DownFast
+        } else if dx < 0.0 && dy > 0.0 {
+            ShipFrame::DownSlow
+        } else {
+            unreachable!()
+        };
 
 
         // Clear the scene
@@ -141,9 +164,8 @@ impl View for ShipView {
         phi.renderer.fill_rect(self.player.rect.to_sdl().unwrap());
 
         // Render the ship
-        phi.renderer.copy_sprite(
-            &self.player.sprites[self.player.current as usize],
-            self.player.rect);
+        phi.renderer.copy_sprite(&self.player.sprites[self.player.current as usize],
+                                 self.player.rect);
 
 
         ViewAction::None

@@ -25,8 +25,13 @@ impl GameView {
     pub fn new(phi: &mut Phi) -> GameView {
         GameView {
             player: Ship {
-                rect: Rectangle { x: 64.0, y: 64.0, w: 32.0, h: 32.0 },
-            }
+                rect: Rectangle {
+                    x: 64.0,
+                    y: 64.0,
+                    w: 32.0,
+                    h: 32.0,
+                },
+            },
         }
     }
 }
@@ -44,13 +49,14 @@ impl View for GameView {
         }
 
         // Move the player's ship
-        let diagonal =
-            (phi.events.key_up ^ phi.events.key_down) &&
-            (phi.events.key_left ^ phi.events.key_right);
+        let diagonal = (phi.events.key_up ^ phi.events.key_down) &&
+                       (phi.events.key_left ^ phi.events.key_right);
 
-        let moved =
-            if diagonal { 1.0 / 2.0f64.sqrt() }
-            else { 1.0 } * PLAYER_SPEED * elapsed;
+        let moved = if diagonal {
+            1.0 / 2.0f64.sqrt()
+        } else {
+            1.0
+        } * PLAYER_SPEED * elapsed;
 
         let dx = match (phi.events.key_left, phi.events.key_right) {
             (true, true) | (false, false) => 0.0,

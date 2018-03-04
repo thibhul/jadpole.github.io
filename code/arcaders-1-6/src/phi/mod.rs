@@ -2,8 +2,8 @@
 mod events;
 pub mod data;
 
-use sdl2::render::Renderer;
-
+use sdl2::render::Canvas;
+use sdl2::video::Window;
 
 // Generate an `Events` structure to record SDL events.
 struct_events! {
@@ -15,21 +15,23 @@ struct_events! {
         key_right: Right,
         key_space: Space
     },
+    window: {
+        resize: Resized { .. }
+    },
     else: {
-        quit: Quit { .. },
-        resize: Window { win_event_id: Resized, .. }
+        quit: Quit { .. }
     }
 }
 
 
 /// Bundles the Phi abstractions in a single structure which  can be passed
 /// easily between functions.
-pub struct Phi<'window> {
+pub struct Phi {
     pub events: Events,
-    pub renderer: Renderer<'window>,
+    pub renderer: Canvas<Window>,
 }
 
-impl<'window> Phi<'window> {
+impl Phi {
     /// Get the size of the main window. If we cannot read the size, e.g. if the
     /// window has been closed, then we panic.
     pub fn output_size(&self) -> (f64, f64) {
@@ -87,7 +89,8 @@ pub trait View {
 /// });
 /// ```
 pub fn spawn<F>(title: &str, init_size: (u32, u32), min_size: (u32, u32), init: F)
-where F: Fn(&mut Phi) -> Box<View> {
+    where F: Fn(&mut Phi) -> Box<View>
+{
     // Initialize SDL2
     let sdl_context = ::sdl2::init().expect("Could not initialize SDL2");
     let video = sdl_context.video().expect("Could not load the video component");
@@ -95,8 +98,11 @@ where F: Fn(&mut Phi) -> Box<View> {
 
     // Open the main window
     let mut window = video.window(title, init_size.0, init_size.1)
-        .position_centered().opengl().resizable()
-        .build().expect("Could not open the main window");
+        .position_centered()
+        .opengl()
+        .resizable()
+        .build()
+        .expect("Could not open the main window");
 
     window.set_minimum_size(min_size.0, min_size.1)
         .expect("Could not set a minimum window size");
@@ -104,9 +110,10 @@ where F: Fn(&mut Phi) -> Box<View> {
     // Create the context
     let mut context = Phi {
         events: Events::new(sdl_context.event_pump().unwrap()),
-        renderer: window.renderer()
+        renderer: window.into_canvas()
             .accelerated()
-            .build().expect("Could not create a renderer for the main window"),
+            .build()
+            .expect("Could not create a renderer for the main window"),
     };
 
     // Create the default view
@@ -147,14 +154,11 @@ where F: Fn(&mut Phi) -> Box<View> {
         context.events.pump();
 
         match current_view.render(&mut context, elapsed) {
-            ViewAction::None =>
-                context.renderer.present(),
+            ViewAction::None => context.renderer.present(),
 
-            ViewAction::Quit =>
-                break,
+            ViewAction::Quit => break,
 
-            ViewAction::ChangeView(new_view) =>
-                current_view = new_view,
+            ViewAction::ChangeView(new_view) => current_view = new_view,
         }
     }
 }

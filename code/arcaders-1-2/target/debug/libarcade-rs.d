@@ -1,0 +1,1 @@
+/home/miel/repos/jadpole.github.io/code/arcaders-1-2/target/debug/libarcade-rs.rmeta: /home/miel/repos/jadpole.github.io/code/arcaders-1-2/src/main.rs /home/miel/repos/jadpole.github.io/code/arcaders-1-2/src/events.rs

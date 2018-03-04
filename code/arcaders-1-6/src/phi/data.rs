@@ -31,12 +31,20 @@ impl Rectangle {
         Some(Rectangle {
             w: self.w,
             h: self.h,
-            x: if self.x < parent.x { parent.x }
-               else if self.x + self.w >= parent.x + parent.w { parent.x + parent.w - self.w }
-               else { self.x },
-            y: if self.y < parent.y { parent.y }
-               else if self.y + self.h >= parent.y + parent.h { parent.y + parent.h - self.h }
-               else { self.y },
+            x: if self.x < parent.x {
+                parent.x
+            } else if self.x + self.w >= parent.x + parent.w {
+                parent.x + parent.w - self.w
+            } else {
+                self.x
+            },
+            y: if self.y < parent.y {
+                parent.y
+            } else if self.y + self.h >= parent.y + parent.h {
+                parent.y + parent.h - self.h
+            } else {
+                self.y
+            },
         })
     }
 
@@ -48,18 +56,15 @@ impl Rectangle {
         let ymin = rect.y;
         let ymax = ymin + rect.h;
 
-        xmin >= self.x && xmin <= self.x + self.w &&
-        xmax >= self.x && xmax <= self.x + self.w &&
-        ymin >= self.y && ymin <= self.y + self.h &&
+        xmin >= self.x && xmin <= self.x + self.w && xmax >= self.x &&
+        xmax <= self.x + self.w && ymin >= self.y && ymin <= self.y + self.h &&
         ymax >= self.y && ymax <= self.y + self.h
     }
 
     /// Check whether some part of `self` overlaps with another rectangle, which
     /// is useful to detect collisions, for example.
     pub fn overlaps(&self, other: Rectangle) -> bool {
-        self.x < other.x + other.w &&
-        self.x + self.w > other.x &&
-        self.y < other.y + other.h &&
+        self.x < other.x + other.w && self.x + self.w > other.x && self.y < other.y + other.h &&
         self.y + self.h > other.y
     }
 }

@@ -1,8 +1,8 @@
 #[macro_use]
 mod events;
 
-use sdl2::render::Renderer;
-
+use sdl2::render::Canvas;
+use sdl2::video::Window;
 
 // Generate an `Events` structure to record SDL events.
 struct_events! {
@@ -20,9 +20,9 @@ struct_events! {
 
 /// Bundles the Phi abstractions in a single structure which  can be passed
 /// easily between functions.
-pub struct Phi<'window> {
+pub struct Phi {
     pub events: Events,
-    pub renderer: Renderer<'window>,
+    pub renderer: Canvas<Window>,
 }
 
 
@@ -74,7 +74,8 @@ pub trait View {
 /// });
 /// ```
 pub fn spawn<F>(title: &str, init: F)
-where F: Fn(&mut Phi) -> Box<View> {
+    where F: Fn(&mut Phi) -> Box<View>
+{
     // Initialize SDL2
     let sdl_context = ::sdl2::init().expect("Could not initialize SDL2");
     let video = sdl_context.video().expect("Could not load the video component");
@@ -82,15 +83,18 @@ where F: Fn(&mut Phi) -> Box<View> {
 
     // Open the main window
     let window = video.window(title, 800, 600)
-        .position_centered().opengl()
-        .build().expect("Could not open the main window");
+        .position_centered()
+        .opengl()
+        .build()
+        .expect("Could not open the main window");
 
     // Create the context
     let mut context = Phi {
         events: Events::new(sdl_context.event_pump().unwrap()),
-        renderer: window.renderer()
+        renderer: window.into_canvas()
             .accelerated()
-            .build().expect("Could not create a renderer for the main window"),
+            .build()
+            .expect("Could not create a canvas for the main window"),
     };
 
     // Create the default view
@@ -131,14 +135,11 @@ where F: Fn(&mut Phi) -> Box<View> {
         context.events.pump();
 
         match current_view.render(&mut context, elapsed) {
-            ViewAction::None =>
-                context.renderer.present(),
+            ViewAction::None => context.renderer.present(),
 
-            ViewAction::Quit =>
-                break,
+            ViewAction::Quit => break,
 
-            ViewAction::ChangeView(new_view) =>
-                current_view = new_view,
+            ViewAction::ChangeView(new_view) => current_view = new_view,
         }
     }
 }

@@ -3,7 +3,8 @@ mod events;
 pub mod data;
 pub mod gfx;
 
-use sdl2::render::Renderer;
+use sdl2::render::Canvas;
+use sdl2::video::Window;
 
 
 struct_events! {
@@ -23,13 +24,13 @@ struct_events! {
 
 /// Bundles the Phi abstractions in a single structure which
 /// can be passed easily between functions.
-pub struct Phi<'window> {
+pub struct Phi {
     pub events: Events,
-    pub renderer: Renderer<'window>,
+    pub renderer: Canvas<Window>,
 }
 
-impl<'window> Phi<'window> {
-    fn new(events: Events, renderer: Renderer<'window>) -> Phi<'window> {
+impl Phi {
+    fn new(events: Events, renderer: Canvas<Window>) -> Phi {
         Phi {
             events: events,
             renderer: renderer,
@@ -46,19 +47,19 @@ impl<'window> Phi<'window> {
 /// A `ViewAction` is a way for the currently executed view to
 /// communicate with the game loop. It specifies which action
 /// should be executed before the next rendering.
-pub enum ViewAction {
+pub enum ViewAction<'view> {
     None,
     Quit,
-    ChangeView(Box<View>),
+    ChangeView(Box<View<'view>>),
 }
 
 
-pub trait View {
+pub trait View<'view> {
     /// Called on every frame to take care of both the logic and
     /// the rendering of the current view.
     ///
     /// `elapsed` is expressed in seconds.
-    fn render(&mut self, context: &mut Phi, elapsed: f64) -> ViewAction;
+    fn render(&mut self, context: &'view mut Phi, elapsed: f64) -> ViewAction;
 }
 
 
@@ -91,25 +92,30 @@ pub trait View {
 ///     Box::new(MyView)
 /// });
 /// ```
+/// Needs a Higher rank trait bound to handle every lifetime possible coming from the closure.
 pub fn spawn<F>(title: &str, init: F)
-where F: Fn(&mut Phi) -> Box<View> {
+    where for<'view> F: Fn(&'view mut Phi) -> Box<View<'view>>
+{
     // Initialize SDL2
     let sdl_context = ::sdl2::init().unwrap();
     let video = sdl_context.video().unwrap();
     let mut timer = sdl_context.timer().unwrap();
-    let _image_context = ::sdl2_image::init(::sdl2_image::INIT_PNG).unwrap();
+    let _image_context = ::sdl2::image::init(::sdl2::image::INIT_PNG).unwrap();
 
     // Create the window
     let window = video.window(title, 800, 600)
-        .position_centered().opengl().resizable()
-        .build().unwrap();
+        .position_centered()
+        .opengl()
+        .resizable()
+        .build()
+        .unwrap();
 
     // Create the context
-    let mut context = Phi::new(
-        Events::new(sdl_context.event_pump().unwrap()),
-        window.renderer()
-            .accelerated()
-            .build().unwrap());
+    let mut context = Phi::new(Events::new(sdl_context.event_pump().unwrap()),
+                               window.into_canvas()
+                                   .accelerated()
+                                   .build()
+                                   .unwrap());
 
     // Create the default view
     let mut current_view = init(&mut context);
@@ -150,14 +156,11 @@ where F: Fn(&mut Phi) -> Box<View> {
         context.events.pump(&mut context.renderer);
 
         match current_view.render(&mut context, elapsed) {
-            ViewAction::None =>
-                context.renderer.present(),
+            ViewAction::None => context.renderer.present(),
 
-            ViewAction::Quit =>
-                break,
+            ViewAction::Quit => break,
 
-            ViewAction::ChangeView(new_view) =>
-                current_view = new_view,
+            ViewAction::ChangeView(new_view) => current_view = new_view,
         }
     }
 }

@@ -11,17 +11,20 @@ fn main() {
 
     // Create the window
     let window = video.window("ArcadeRS Shooter", 800, 600)
-        .position_centered().opengl()
-        .build().expect("Could not open the main window");
+        .position_centered()
+        .opengl()
+        .build()
+        .expect("Could not open the main window");
 
-    let mut renderer = window.renderer()
+    let mut canvas = window.into_canvas()
         .accelerated()
-        .build().expect("Could not create a renderer for the main window");
+        .build()
+        .expect("Could not create a canvas for the main window");
 
     // Render a fully black window
-    renderer.set_draw_color(Color::RGB(0, 0, 0));
-    renderer.clear();
-    renderer.present();
+    canvas.set_draw_color(Color::RGB(0, 0, 0));
+    canvas.clear();
+    canvas.present();
 
     thread::sleep(Duration::from_millis(3000));
 }

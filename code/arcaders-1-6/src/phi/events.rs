@@ -1,6 +1,7 @@
 macro_rules! struct_events {
     [
         keyboard: { $( $k_alias:ident : $k_sdl:ident ),* },
+        window: { $( $win_alias:ident : $win_sdl:pat ),* },
         else: { $( $e_alias:ident : $e_sdl:pat ),* }
     ]
     => {
@@ -13,6 +14,7 @@ macro_rules! struct_events {
         /// state manually.
         pub struct ImmediateEvents {
             $( pub $k_alias : Option<bool> , )*
+            $( pub $win_alias: bool , ),*
             $( pub $e_alias : bool ),*
         }
 
@@ -22,6 +24,7 @@ macro_rules! struct_events {
             pub fn new() -> ImmediateEvents {
                 ImmediateEvents {
                     $( $k_alias: None , )*
+                    $( $win_alias: false , ),*
                     $( $e_alias: false ),*
                 }
             }
@@ -56,6 +59,7 @@ macro_rules! struct_events {
 
                 for event in self.pump.poll_iter() {
                     use sdl2::event::Event::*;
+                    use sdl2::event::WindowEvent::Resized;
                     use sdl2::keyboard::Keycode::*;
 
                     match event {
@@ -82,6 +86,15 @@ macro_rules! struct_events {
                                     self.$k_alias = false;
                                 }
                             ),*
+                            _ => {}
+                        },
+                        Window { win_event, .. } => match win_event {
+                            $(
+                                $win_sdl => {
+                                    self.now.$win_alias = true;
+                                },
+                            ),*
+
                             _ => {}
                         },
 

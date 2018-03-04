@@ -2,17 +2,17 @@ use phi::data::Rectangle;
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
-use sdl2::render::{Renderer, Texture};
-use sdl2_image::LoadTexture;
-
+use sdl2::render::{Canvas, Texture, TextureCreator};
+use sdl2::image::LoadTexture;
+use sdl2::video::{Window, WindowContext};
 
 #[derive(Clone)]
-pub struct Sprite {
-    tex: Rc<RefCell<Texture>>,
+pub struct Sprite<'view> {
+    tex: Rc<RefCell<Texture<'view>>>,
     src: Rectangle,
 }
 
-impl Sprite {
+impl<'view> Sprite<'view> {
     /// Creates a new sprite by wrapping a `Texture`.
     pub fn new(texture: Texture) -> Sprite {
         let tex_query = texture.query();
@@ -24,14 +24,14 @@ impl Sprite {
                 h: tex_query.height as f64,
                 x: 0.0,
                 y: 0.0,
-            }
+            },
         }
     }
 
     /// Creates a new sprite from an image file located at the given path.
     /// Returns `Some` if the file could be read, and `None` otherwise.
-    pub fn load(renderer: &Renderer, path: &str) -> Option<Sprite> {
-        renderer.load_texture(Path::new(path)).ok().map(Sprite::new)
+    pub fn load(renderer: &'view Canvas<Window>, path: &str) -> Option<Sprite<'view>> {
+        renderer.texture_creator().load_texture(Path::new(path)).ok().map(Sprite::new)
     }
 
 
@@ -45,7 +45,7 @@ impl Sprite {
     /// The provided `rect` is relative to the currently held region.
     /// Returns `Some` if the `rect` is valid, i.e. included in the current
     /// region, and `None` otherwise.
-    pub fn region(&self, rect: Rectangle) -> Option<Sprite> {
+    pub fn region(&self, rect: Rectangle) -> Option<Sprite<'view>> {
         let new_src = Rectangle {
             x: rect.x + self.src.x,
             y: rect.y + self.src.y,
@@ -64,8 +64,8 @@ impl Sprite {
     }
 
 
-    pub fn render(&self, renderer: &mut Renderer, dest: Rectangle) {
-        renderer.copy(&mut self.tex.borrow_mut(), self.src.to_sdl(), dest.to_sdl())
+    pub fn render(&self, renderer: &mut Canvas<Window>, dest: Rectangle) {
+        renderer.copy(&mut self.tex.borrow_mut(), self.src.to_sdl(), dest.to_sdl()).unwrap()
     }
 }
 
@@ -74,8 +74,8 @@ pub trait CopySprite {
     fn copy_sprite(&mut self, sprite: &Sprite, dest: Rectangle);
 }
 
-impl<'window> CopySprite for Renderer<'window> {
+impl CopySprite for Canvas<Window> {
     fn copy_sprite(&mut self, sprite: &Sprite, dest: Rectangle) {
-       sprite.render(self, dest);
-   }
+        sprite.render(self, dest);
+    }
 }

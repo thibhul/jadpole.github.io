@@ -13,14 +13,14 @@ impl Rectangle {
     /// Generates an SDL-compatible Rect equivalent to `self`.
     /// Panics if it could not be created, for example if a
     /// coordinate of a corner overflows an `i32`.
+    /// For now, Canvas.copy needs an Option as parameter, thus to_sdl returns always Some()
     pub fn to_sdl(self) -> Option<SdlRect> {
         // Reject negative width and height
         assert!(self.w >= 0.0 && self.h >= 0.0);
 
         // SdlRect::new : `(i32, i32, u32, u32) -> Result<Option<SdlRect>>`
         // Will panic if the width of the height is negative.
-        SdlRect::new(self.x as i32, self.y as i32, self.w as u32, self.h as u32)
-            .unwrap()
+        Some(SdlRect::new(self.x as i32, self.y as i32, self.w as u32, self.h as u32))
     }
 
 
@@ -30,16 +30,13 @@ impl Rectangle {
         let ymin = rect.y;
         let ymax = ymin + rect.h;
 
-        xmin >= self.x && xmin <= self.x + self.w &&
-        xmax >= self.x && xmax <= self.x + self.w &&
-        ymin >= self.y && ymin <= self.y + self.h &&
+        xmin >= self.x && xmin <= self.x + self.w && xmax >= self.x &&
+        xmax <= self.x + self.w && ymin >= self.y && ymin <= self.y + self.h &&
         ymax >= self.y && ymax <= self.y + self.h
     }
 
     pub fn overlaps(&self, other: Rectangle) -> bool {
-        self.x < other.x + other.w &&
-        self.x + self.w > other.x &&
-        self.y < other.y + other.h &&
+        self.x < other.x + other.w && self.x + self.w > other.x && self.y < other.y + other.h &&
         self.y + self.h > other.y
     }
 
@@ -56,12 +53,20 @@ impl Rectangle {
         Some(Rectangle {
             w: self.w,
             h: self.h,
-            x: if self.x < parent.x { parent.x }
-               else if self.x + self.w >= parent.x + parent.w { parent.x + parent.w - self.w }
-               else { self.x },
-            y: if self.y < parent.y { parent.y }
-               else if self.y + self.h >= parent.y + parent.h { parent.y + parent.h - self.h }
-               else { self.y },
+            x: if self.x < parent.x {
+                parent.x
+            } else if self.x + self.w >= parent.x + parent.w {
+                parent.x + parent.w - self.w
+            } else {
+                self.x
+            },
+            y: if self.y < parent.y {
+                parent.y
+            } else if self.y + self.h >= parent.y + parent.h {
+                parent.y + parent.h - self.h
+            } else {
+                self.y
+            },
         })
     }
 }
